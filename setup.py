@@ -12,6 +12,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob('launch/*launch.[pxy][yma]*')),
+        ('share/' + package_name + '/config', glob('config/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -24,6 +25,7 @@ setup(
         'console_scripts': [
             'franka_lock_unlock = franka_lock_unlock.franka_lock_unlock:main',
             'franka_shutdown = franka_lock_unlock.franka_shutdown:main',
+            'franka_lock_unlock_node = franka_lock_unlock.nodes.franka_lock_unlock_node:main'
         ],
     },
 )

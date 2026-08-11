@@ -16,13 +16,15 @@ from threading import Event
 import atexit
 import argparse
 from urllib.parse import urljoin
+from requests.exceptions import RequestException
 from .franka_client import FrankaClient
 
 
 class FrankaLockUnlock(FrankaClient):
-    def __init__(self, hostname: str, username: str, password: str, protocol: str = 'https', relock: bool = False):
+    def __init__(self, hostname: str, username: str, password: str, protocol: str = 'https', relock: bool = False, robot_type: str = "fr3"):
         super().__init__(hostname, username, password, protocol=protocol)
         self._relock = relock
+        self._robot_type = robot_type
         atexit.register(self._cleanup)
 
     def _cleanup(self):
@@ -46,16 +48,89 @@ class FrankaLockUnlock(FrankaClient):
         print("Homing the gripper...")
         action = self._session.post(urljoin(self._hostname, f'/desk/api/gripper/homing'), \
                                     headers={'X-Control-Token': self._token})
-        assert action.status_code == 200, "Error homing gripper."
+        # assert action.status_code == 200, "Error homing gripper." #TODO(Sachin): why did they comment this?
         print(f'Successfully homed the gripper.')
 
     def _lock_unlock(self, unlock: bool, force: bool = False):
         print(f'{"Unlocking" if unlock else "Locking"} the robot...')
-        action = self._session.post(urljoin(self._hostname, f'/desk/api/robot/{"open" if unlock else "close"}-brakes'), \
+        if self._robot_type == "fr3":
+            URL = urljoin(self._hostname, f'/desk/api/joints/{"unlock" if unlock else "lock"}')
+        elif self._robot_type == "panda":
+            URL = urljoin(self._hostname, f'/desk/api/robot/{"open" if unlock else "close"}-brakes')
+        else:
+            # TODO(Sachin): Add a way to handle
+            print("Robot type not known")
+            return
+
+        action = self._session.post(URL, \
                                     files={'force': force},
                                     headers={'X-Control-Token': self._token})
         assert action.status_code == 200, "Error requesting brake open/close action."
         print(f'Successfully {"unlocked" if unlock else "locked"} the robot.')
+
+    def try_lock_unlock(self, unlock: bool, force: bool = False, enable_fci: bool = False) -> tuple[bool, str]:
+        """Lock and Unlock the robot.
+
+        Returns:
+            tuple[bool, str]: (success, status_message)"""
+        action = "unlock" if unlock else "lock"
+        try:
+            self._lock_unlock(unlock, force)
+            if enable_fci:
+                self._activate_fci()
+
+            return True, f"Successfully executed {action}"
+        except AssertionError as e:
+            # Catches assert check
+            return False, f"API assertion failed during {action}: {e}"
+        except RequestException as e:
+            # Catches network timeouts, connection refused, DNS errors, etc.
+            return False, f"Network error during {action}: {e}"
+        except Exception as e:
+            return False, f"Exception: {e}"
+
+    def try_logout(self) -> tuple[bool, str]:
+        """Try logout."""
+        try:
+            if self._token is not None or self._token_id is not None:
+                self._release_token()
+            if self._logged_in:
+                self._logout()
+            return True, "Logout Successfully"
+        except AssertionError as e:
+            return False, f"Assertion error: {e}"
+        except RequestException as e:
+            return False, f"Network error during logout {e}"
+        except Exception as e:
+            return False, f"Exception: {e}"
+
+    def try_login(self, request: bool = False) -> tuple[bool, str]:
+        """Try login to the system."""
+        try:
+            self._login()
+            if self._token is None or self._get_active_token_id() is not None:
+                # robot is currently in use
+                return False, "robot is currently in use"
+            self._request_token(physically=request)
+            print("successfully connected.")
+        except AssertionError as e:
+            print(f"Assertion error: {e}")
+            return False, f"Assertion error: {e}"
+        except RequestException as e:
+            print(f"Network error connected to hostname: {self._hostname}: {e}")
+            return False, f"Network error: {e}"
+        except Exception as e:
+            print(f"Unexpected error during login: {e}")
+            return False, f"Unexpected error: {e}"
+        return True, "Successfully connected"
+
+    def is_logged_in(self) -> bool:
+        """Check if already logged in.
+
+        Returns:
+            bool
+        """
+        return self._logged_in
 
     def run(self, unlock: bool = False, force: bool = False, wait: bool = False, request: bool = False, persistent: bool = False, fci: bool = False, home: bool = False) -> None:
         assert not request or wait, "Requesting control without waiting for obtaining control is not supported."
