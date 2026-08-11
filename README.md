@@ -1,6 +1,6 @@
 # Franka Lock Unlock
 
-Locking and unlocking of Franka Emika Panda joint brakes programmatically. Open or close all joint locks either from the command-line, or from any Python program.
+Locking and unlocking of Franka Emika Panda and Franka Research 3 (FR3) joint brakes programmatically. Open or close all joint locks either from the command-line, or from any Python program.
 
 Also supports the activation of the Franka Control Interface (FCI) and other options.
 
