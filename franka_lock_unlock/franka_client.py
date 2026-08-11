@@ -18,7 +18,7 @@ from http import HTTPStatus
 
 
 class FrankaClient(ABC):
-    def __init__(self, hostname: str, username: str, password: str, protocol: str = 'https'):
+    def __init__(self, hostname: str, username: str, password: str, protocol: str = 'https', timeout: float = 5.0):
         requests.packages.urllib3.disable_warnings()
         self._session = requests.Session()
         self._session.verify = False
@@ -28,6 +28,7 @@ class FrankaClient(ABC):
         self._logged_in = False
         self._token = None
         self._token_id = None
+        self.timeout = timeout
 
     @staticmethod
     def _encode_password(username, password):
@@ -41,7 +42,7 @@ class FrankaClient(ABC):
             return
         login = self._session.post(urljoin(self._hostname, '/admin/api/login'), \
                                            json={'login': self._username, \
-                                                 'password': self._encode_password(self._username, self._password)})
+                                                 'password': self._encode_password(self._username, self._password)}, timeout=self.timeout)
         assert login.status_code == HTTPStatus.OK, "Error logging in."
         self._session.cookies.set('authorization', login.text)
         self._logged_in = True
