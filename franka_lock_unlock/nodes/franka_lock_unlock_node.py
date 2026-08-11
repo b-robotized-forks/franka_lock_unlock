@@ -80,7 +80,7 @@ class FrankLockUnlockNode(Node):
         res, msg = self.franka_lock_unlock.try_login(self.request_physical_access)
         if not res:
             self.get_logger().error(msg)
-            # return TransitionCallbackReturn.FAILURE
+            return TransitionCallbackReturn.FAILURE
         return TransitionCallbackReturn.SUCCESS
 
     def on_activate(self, state: State) -> TransitionCallbackReturn:
@@ -91,7 +91,7 @@ class FrankLockUnlockNode(Node):
         res, msg = self.franka_lock_unlock.try_lock_unlock(True, self.request_physical_access)
         if not res:
             self.get_logger().error(msg)
-            # return TransitionCallbackReturn.FAILURE
+            return TransitionCallbackReturn.FAILURE
         return TransitionCallbackReturn.SUCCESS
 
     def on_deactivate(self, state: State) -> TransitionCallbackReturn:
@@ -103,7 +103,7 @@ class FrankLockUnlockNode(Node):
         res, msg = self.franka_lock_unlock.try_lock_unlock(False)
         if not res:
             self.get_logger().error(msg)
-            # return TransitionCallbackReturn.FAILURE
+            return TransitionCallbackReturn.FAILURE
         return TransitionCallbackReturn.SUCCESS
 
     def on_shutdown(self, state: State) -> TransitionCallbackReturn:
@@ -116,12 +116,12 @@ class FrankLockUnlockNode(Node):
             res, msg = self.franka_lock_unlock.try_lock_unlock(False)
             if not res:
                 self.get_logger().error(msg)
-                # return TransitionCallbackReturn.FAILURE
+                return TransitionCallbackReturn.FAILURE
 
         res, msg = self.franka_lock_unlock.try_logout()
         if not res:
             self.get_logger().warn(msg)
-            # return TransitionCallbackReturn.FAILURE
+            return TransitionCallbackReturn.FAILURE
         return TransitionCallbackReturn.SUCCESS
 
     def on_cleanup(self, state: State) -> TransitionCallbackReturn:
@@ -133,7 +133,7 @@ class FrankLockUnlockNode(Node):
         res, msg = self.franka_lock_unlock.try_logout()
         if not res:
             self.get_logger().error(msg)
-            # return TransitionCallbackReturn.FAILURE
+            return TransitionCallbackReturn.FAILURE
         return TransitionCallbackReturn.SUCCESS
 
     def trigger_shutdown(self):
