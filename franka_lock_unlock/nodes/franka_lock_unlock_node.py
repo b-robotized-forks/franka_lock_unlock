@@ -31,8 +31,8 @@ class FrankLockUnlockNode(Node):
         self.robot_type= self.get_parameter('robot_type').value
         self.get_logger().debug(f"hostname: {self.hostname}, username: {self.username}, relock {self.enable_relock}, wait web ui: {self.wait_web_ui}, request physical access: {self.request_physical_access}, enable fci: {self.enable_fci}, robot type: {self.robot_type}")
 
-        # TODO(Sachin): Check if this make the relock twice, for now it is required if user accidently stops the launch file
-        self.franka_lock_unlock = FrankaLockUnlock(hostname=self.hostname, username=self.username, password=self.password, relock=self.enable_relock)
+        # NOTE: resetting is handled by Node itself when the shutdown trigger is called.
+        self.franka_lock_unlock = FrankaLockUnlock(hostname=self.hostname, username=self.username, password=self.password)
 
         self.timer: Timer | None = None
         self._current_state = 'unconfigured'
