@@ -1,41 +1,46 @@
 import rclpy
 from rclpy.timer import Timer
-from rclpy.lifecycle import Node, State, TransitionCallbackReturn, LifecycleState
-from rcl_interfaces.msg import ParameterType, ParameterValue
+from rclpy.lifecycle import Node, State, TransitionCallbackReturn
 
 
 from franka_lock_unlock.franka_lock_unlock_params import franka_lock_unlock
 from franka_lock_unlock.franka_lock_unlock import FrankaLockUnlock
 
 HOURS_TO_RESET = 23
-RESET_TIME_IN_SECS = HOURS_TO_RESET*60*60 # NOTE: the token expires after 24 hours
+RESET_TIME_IN_SECS = HOURS_TO_RESET * 60 * 60  # NOTE: the token expires after 24 hours
+
 
 class FrankLockUnlockNode(Node):
     """Franka Lock Unlock ROS2 Lifecycle Node."""
+
     def __init__(self):
         super().__init__("franka_lock_unlock_node")
 
         self.param_listener = franka_lock_unlock.ParamListener(self)
         self.params = self.param_listener.get_params()
 
-        self.get_logger().debug(f"hostname: {self.params.hostname}, username: {self.params.username}, relock {self.params.enable_relock}, wait web ui: {self.params.wait_web_ui}, request physical access: {self.params.request_physical_access}, enable fci: {self.params.enable_fci}, robot type: {self.params.robot_type}")
+        self.get_logger().debug(
+            f"hostname: {self.params.hostname}, username: {self.params.username}, relock {self.params.enable_relock}, wait web ui: {self.params.wait_web_ui}, request physical access: {self.params.request_physical_access}, enable fci: {self.params.enable_fci}, robot type: {self.params.robot_type}"
+        )
 
         # NOTE: resetting is handled by Node itself when the shutdown trigger is called.
-        self.franka_lock_unlock = FrankaLockUnlock(hostname=self.params.hostname, username=self.params.username, password=self.params.password)
+        self.franka_lock_unlock = FrankaLockUnlock(
+            hostname=self.params.hostname,
+            username=self.params.username,
+            password=self.params.password,
+        )
 
         self.timer: Timer | None = None
-        self._current_state = 'unconfigured'
+        self._current_state = "unconfigured"
         self._resetting_token = False
 
         self.get_logger().info(f"{self.get_name()} node started.")
 
     def _start_timer(self):
-        """Safely start the timer"""
+        """Safely start the timer."""
         if self.timer is None:
             self.timer = self.create_timer(RESET_TIME_IN_SECS, self.trigger_reset)
-            self.get_logger().info(
-                f"Reset timer created (triggers every {HOURS_TO_RESET} hours)."
-            )
+            self.get_logger().info(f"Reset timer created (triggers every {HOURS_TO_RESET} hours).")
         else:
             self.timer.reset()
 
@@ -78,7 +83,7 @@ class FrankLockUnlockNode(Node):
         return True
 
     def on_configure(self, state: State) -> TransitionCallbackReturn:
-        """Handles the configure state."""
+        """Handle the configure state."""
         self.get_logger().info(
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'configure'"
         )
@@ -94,26 +99,28 @@ class FrankLockUnlockNode(Node):
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
         self._start_timer()
-        self._current_state = 'inactive'
+        self._current_state = "inactive"
         return TransitionCallbackReturn.SUCCESS
 
     def on_activate(self, state: State) -> TransitionCallbackReturn:
-        """Handles the activate state."""
+        """Handle the activate state."""
         if self._resetting_token:
             self.get_logger().error("Please wait token is resetting currently")
             return TransitionCallbackReturn.ERROR
         self.get_logger().info(
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'activate'"
         )
-        res, msg = self.franka_lock_unlock.try_lock_unlock(True, self.params.request_physical_access)
+        res, msg = self.franka_lock_unlock.try_lock_unlock(
+            True, self.params.request_physical_access
+        )
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
-        self._current_state = 'active'
+        self._current_state = "active"
         return TransitionCallbackReturn.SUCCESS
 
     def on_deactivate(self, state: State) -> TransitionCallbackReturn:
-        """Handles the deactivate state."""
+        """Handle the deactivate state."""
         if self._resetting_token:
             self.get_logger().error("Please wait token is resetting currently")
             return TransitionCallbackReturn.ERROR
@@ -125,11 +132,11 @@ class FrankLockUnlockNode(Node):
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
-        self._current_state = 'inactive'
+        self._current_state = "inactive"
         return TransitionCallbackReturn.SUCCESS
 
     def on_shutdown(self, state: State) -> TransitionCallbackReturn:
-        """Handles the shutdown state."""
+        """Handle the shutdown state."""
         if self._resetting_token:
             self.get_logger().error("Please wait token is resetting currently")
             return TransitionCallbackReturn.ERROR
@@ -148,11 +155,11 @@ class FrankLockUnlockNode(Node):
         if not res:
             self.get_logger().warn(msg)
             return TransitionCallbackReturn.FAILURE
-        self._current_state = 'shutdown'
+        self._current_state = "shutdown"
         return TransitionCallbackReturn.SUCCESS
 
     def on_cleanup(self, state: State) -> TransitionCallbackReturn:
-        """Handles the cleanup state."""
+        """Handle the cleanup state."""
         if self._resetting_token:
             self.get_logger().error("Please wait token is resetting currently")
             return TransitionCallbackReturn.ERROR
@@ -166,7 +173,7 @@ class FrankLockUnlockNode(Node):
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
-        self._current_state = 'unconfigured'
+        self._current_state = "unconfigured"
         return TransitionCallbackReturn.SUCCESS
 
     def trigger_shutdown(self):
@@ -188,7 +195,7 @@ class FrankLockUnlockNode(Node):
         self.get_logger().info("Refreshing Franka session before token expiry...")
         self._resetting_token = True
 
-        was_active = (self._current_state == 'active')
+        was_active = self._current_state == "active"
 
         if was_active:
             res, msg = self.franka_lock_unlock.try_lock_unlock(False)
@@ -207,13 +214,16 @@ class FrankLockUnlockNode(Node):
             return
 
         if was_active:
-            res, msg = self.franka_lock_unlock.try_lock_unlock(True, self.params.request_physical_access)
+            res, msg = self.franka_lock_unlock.try_lock_unlock(
+                True, self.params.request_physical_access
+            )
             if not res:
                 self.get_logger().error(f"Reset: re-unlock failed: {msg}")
                 return
 
         self._resetting_token = False
         self.get_logger().info("Franka session refreshed successfully.")
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -225,6 +235,7 @@ def main(args=None):
         node.trigger_shutdown()
     finally:
         rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()
