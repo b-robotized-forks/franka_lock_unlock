@@ -95,3 +95,26 @@ If you want to shut the robot down, you can use the related launch file with
 ```sh
 ros2 launch franka_lock_unlock shutdown.launch.xml hostname:=<HOSTNAME> username:=<USERNAME> password:=<PASSWORD>
 ```
+
+### ROS2 Lifecycle Usage
+
+If you want to launch the controller as a ROS2 Lifecycle Node, follow the below commands.
+
+```bash
+ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml hostname:=$HOSTNAME_OR_IP username:=$USERNAME password:=$PASSWORD
+
+# configure
+ros2 lifecycle set /franka_lock_unlock_node configure
+
+# activate
+ros2 lifecycle set /franka_lock_unlock_node activate
+
+# deactivate
+ros2 lifecycle set /franka_lock_unlock_node deactivate
+
+# cleanup
+ros2 lifecycle set /franka_lock_unlock_node cleanup
+
+# shutdown
+ros2 lifecycle set /franka_lock_unlock_node shutdown
+```
