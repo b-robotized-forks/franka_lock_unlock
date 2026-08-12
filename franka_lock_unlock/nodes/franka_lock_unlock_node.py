@@ -35,6 +35,7 @@ class FrankLockUnlockNode(Node):
         self.franka_lock_unlock = FrankaLockUnlock(hostname=self.hostname, username=self.username, password=self.password, relock=self.enable_relock)
 
         self.timer: Timer | None = None
+        self._current_state = 'unconfigured'
 
         self.get_logger().info(f"{self.get_name()} node started.")
 
@@ -103,6 +104,7 @@ class FrankLockUnlockNode(Node):
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
         self._start_timer()
+        self._current_state = 'inactive'
         return TransitionCallbackReturn.SUCCESS
 
     def on_activate(self, state: State) -> TransitionCallbackReturn:
@@ -114,6 +116,7 @@ class FrankLockUnlockNode(Node):
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
+        self._current_state = 'active'
         return TransitionCallbackReturn.SUCCESS
 
     def on_deactivate(self, state: State) -> TransitionCallbackReturn:
@@ -126,6 +129,7 @@ class FrankLockUnlockNode(Node):
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
+        self._current_state = 'inactive'
         return TransitionCallbackReturn.SUCCESS
 
     def on_shutdown(self, state: State) -> TransitionCallbackReturn:
@@ -145,6 +149,7 @@ class FrankLockUnlockNode(Node):
         if not res:
             self.get_logger().warn(msg)
             return TransitionCallbackReturn.FAILURE
+        self._current_state = 'shutdown'
         return TransitionCallbackReturn.SUCCESS
 
     def on_cleanup(self, state: State) -> TransitionCallbackReturn:
@@ -159,6 +164,7 @@ class FrankLockUnlockNode(Node):
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
+        self._current_state = 'unconfigured'
         return TransitionCallbackReturn.SUCCESS
 
     def trigger_shutdown(self):
@@ -175,11 +181,33 @@ class FrankLockUnlockNode(Node):
 
     def trigger_reset(self):
         """Triggers the reset before 24 hours."""
-        # TODO(Sachin): after login should also go back to the original state, lock or unlock
-        self.trigger_shutdown()
+        self.get_logger().info("Refreshing Franka session before token expiry...")
+
+        was_active = (self._current_state == 'active')
+
+        if was_active:
+            res, msg = self.franka_lock_unlock.try_lock_unlock(False)
+            if not res:
+                self.get_logger().error(f"Reset: lock failed: {msg}")
+                return
+
+        res, msg = self.franka_lock_unlock.try_logout()
+        if not res:
+            self.get_logger().error(f"Reset: logout failed: {msg}")
+            return
+
         res, msg = self.franka_lock_unlock.try_login(self.request_physical_access)
         if not res:
-            self.get_logger().error(msg)
+            self.get_logger().error(f"Reset: re-login failed: {msg}")
+            return
+
+        if was_active:
+            res, msg = self.franka_lock_unlock.try_lock_unlock(True, self.request_physical_access)
+            if not res:
+                self.get_logger().error(f"Reset: re-unlock failed: {msg}")
+                return
+
+        self.get_logger().info("Franka session refreshed successfully.")
 
 def main(args=None):
     rclpy.init(args=args)
