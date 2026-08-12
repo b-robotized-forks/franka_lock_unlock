@@ -7,7 +7,8 @@ from rcl_interfaces.msg import ParameterType, ParameterValue
 from franka_lock_unlock.franka_lock_unlock_params import franka_lock_unlock
 from franka_lock_unlock.franka_lock_unlock import FrankaLockUnlock
 
-RESET_TIME_IN_SECS = 23*60*60 # NOTE: the token expires after 24 hours
+HOURS_TO_RESET = 23
+RESET_TIME_IN_SECS = HOURS_TO_RESET*60*60 # NOTE: the token expires after 24 hours
 
 class FrankLockUnlockNode(Node):
     """Franka Lock Unlock ROS2 Lifecycle Node."""
@@ -33,7 +34,7 @@ class FrankLockUnlockNode(Node):
         if self.timer is None:
             self.timer = self.create_timer(RESET_TIME_IN_SECS, self.trigger_reset)
             self.get_logger().info(
-                f"Reset timer created (triggers every {RESET_TIME_IN_SECS} seconds)."
+                f"Reset timer created (triggers every {HOURS_TO_RESET} hours)."
             )
         else:
             self.timer.reset()
