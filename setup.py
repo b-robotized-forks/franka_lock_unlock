@@ -1,7 +1,19 @@
-from setuptools import find_packages, setup
 from glob import glob
+from setuptools import find_packages, setup
+import sys
 
 package_name = 'franka_lock_unlock'
+
+
+if len(sys.argv) >= 2 and sys.argv[1] != 'clean':
+    from generate_parameter_library_py.setup_helper import generate_parameter_module
+
+    # set module_name and yaml file
+    module_name = 'franka_lock_unlock_params'
+    yaml_file = 'franka_lock_unlock/params.yaml'
+    generate_parameter_module(
+        module_name, yaml_file
+    )
 
 setup(
     name=package_name,

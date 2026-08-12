@@ -11,6 +11,10 @@
   <license>AGPLv3</license>
   <url type="website">https://github.com/jk-ethz/franka_lock_unlock</url>
 
+  <depend>generate_parameter_library</depend>
+  <depend>generate_parameter_library_py</depend>
+  <depend>rclpy</depend>
+
   <exec_depend>launch_xml</exec_depend>
 
   <test_depend>ament_copyright</test_depend>

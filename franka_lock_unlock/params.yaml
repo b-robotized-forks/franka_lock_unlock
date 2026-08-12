@@ -1,0 +1,35 @@
+franka_lock_unlock:
+  hostname:
+    type: string
+    default_value: "localhost"
+    description: "Hostname for the franka server to connect."
+  username:
+    type: string
+    default_value: "admin"
+    description: "Username for the franka server to connect."
+  password:
+    type: string
+    default_value: "secretpwd"
+    description: "Password for the franka server to connect."
+  robot_type:
+    type: string
+    default_value: "fr3"
+    description: "Robot type: e.g. Franka Research 3 (fr3), Franka Emika Panda (panda)."
+    validation:
+      one_of<>: [ ["fr3", "panda"] ]
+  enable_relock:
+    type: bool
+    default_value: true
+    description: "Relock the brakes on exit."
+  wait_web_ui:
+    type: bool
+    default_value: true
+    description: "Wait in case the robot web UI is currently in use."
+  request_physical_access:
+    type: bool
+    default_value: true
+    description: "Request control by confirming physical access to the robot in case the robot web UI is currently in use"
+  enable_fci:
+    type: bool
+    default_value: true
+    description: "Activate the Franka Control Interface (FCI)."
