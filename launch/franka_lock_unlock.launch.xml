@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<launch>
+    <!-- Launch Arguments with Defaults -->
+    <arg name="hostname" default="localhost" />
+    <arg name="username" default="user" />
+    <arg name="password" default="strongpwd" />
+    <arg name="enable_relock" default="true" />
+    <arg name="wait_web_ui" default="true" />
+    <arg name="request_physical_access" default="true" />
+    <arg name="enable_fci" default="true" />
+    <arg name="robot_type" default="fr3" />
+
+    <node pkg="franka_lock_unlock"
+        name="franka_lock_unlock_node"
+        exec="franka_lock_unlock_node"
+        output="screen"
+        emulate_tty="True">
+
+        <!-- Node Parameters -->
+        <param name="hostname" value="$(var hostname)" />
+        <param name="username" value="$(var username)" />
+        <param name="password" value="$(var password)" />
+        <param name="enable_relock" value="$(var enable_relock)" />
+        <param name="wait_web_ui" value="$(var wait_web_ui)" />
+        <param name="request_physical_access" value="$(var request_physical_access)" />
+        <param name="enable_fci" value="$(var enable_fci)" />
+        <param name="robot_type" value="$(var robot_type)" />
+
+    </node>
+</launch>
