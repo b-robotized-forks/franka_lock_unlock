@@ -1,10 +1,11 @@
 import rclpy
+from rclpy.timer import Timer
 from rclpy.lifecycle import Node, State, TransitionCallbackReturn, LifecycleState
 from rcl_interfaces.msg import ParameterType, ParameterValue
 
 from franka_lock_unlock.franka_lock_unlock import FrankaLockUnlock
 
-
+RESET_TIME_IN_SECS = 23*60*60 # NOTE: the token expires after 24 hours
 
 class FrankLockUnlockNode(Node):
     """Franka Lock Unlock ROS2 Lifecycle Node."""
@@ -33,7 +34,27 @@ class FrankLockUnlockNode(Node):
         # TODO(Sachin): Check if this make the relock twice, for now it is required if user accidently stops the launch file
         self.franka_lock_unlock = FrankaLockUnlock(hostname=self.hostname, username=self.username, password=self.password, relock=self.enable_relock)
 
+        self.timer: Timer | None = None
+
         self.get_logger().info(f"{self.get_name()} node started.")
+
+    def _start_timer(self):
+        """Safely start the timer"""
+        if self.timer is None:
+            self.timer = self.create_timer(RESET_TIME_IN_SECS, self.trigger_reset)
+            self.get_logger().info(
+                f"Reset timer created (triggers every {RESET_TIME_IN_SECS} seconds)."
+            )
+        else:
+            self.timer.reset()
+
+    def _stop_timer(self):
+        """Safely stops and destroys the reset timer."""
+        if self.timer is not None:
+            self.timer.cancel()
+            self.destroy_timer(self.timer)
+            self.timer = None
+            self.get_logger().info("Reset timer stopped.")
 
     def _validate_params(self) -> bool:
         """Validate the params."""
@@ -81,6 +102,7 @@ class FrankLockUnlockNode(Node):
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
+        self._start_timer()
         return TransitionCallbackReturn.SUCCESS
 
     def on_activate(self, state: State) -> TransitionCallbackReturn:
@@ -111,6 +133,7 @@ class FrankLockUnlockNode(Node):
         self.get_logger().info(
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'shutdown'"
         )
+        self._stop_timer()
         if state.label == "active" or self.enable_relock:
             self.get_logger().info("Relocking robot before shutdown...")
             res, msg = self.franka_lock_unlock.try_lock_unlock(False)
@@ -130,6 +153,8 @@ class FrankLockUnlockNode(Node):
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'cleanup'"
         )
 
+        self._stop_timer()
+
         res, msg = self.franka_lock_unlock.try_logout()
         if not res:
             self.get_logger().error(msg)
@@ -147,6 +172,14 @@ class FrankLockUnlockNode(Node):
             res, msg = self.franka_lock_unlock.try_logout()
             if not res:
                 self.get_logger().error(msg)
+
+    def trigger_reset(self):
+        """Triggers the reset before 24 hours."""
+        # TODO(Sachin): after login should also go back to the original state, lock or unlock
+        self.trigger_shutdown()
+        res, msg = self.franka_lock_unlock.try_login(self.request_physical_access)
+        if not res:
+            self.get_logger().error(msg)
 
 def main(args=None):
     rclpy.init(args=args)
