@@ -3,6 +3,8 @@ from rclpy.timer import Timer
 from rclpy.lifecycle import Node, State, TransitionCallbackReturn, LifecycleState
 from rcl_interfaces.msg import ParameterType, ParameterValue
 
+
+from franka_lock_unlock.franka_lock_unlock_params import franka_lock_unlock
 from franka_lock_unlock.franka_lock_unlock import FrankaLockUnlock
 
 RESET_TIME_IN_SECS = 23*60*60 # NOTE: the token expires after 24 hours
@@ -12,27 +14,13 @@ class FrankLockUnlockNode(Node):
     def __init__(self):
         super().__init__("franka_lock_unlock_node")
 
-        self.declare_parameter('hostname', ParameterValue(type=ParameterType.PARAMETER_STRING, string_value='localhost'))
-        self.declare_parameter('username', ParameterValue(type=ParameterType.PARAMETER_STRING, string_value='admin'))
-        self.declare_parameter('password', ParameterValue(type=ParameterType.PARAMETER_STRING, string_value='strongpwd'))
-        self.declare_parameter('enable_relock', ParameterValue(type=ParameterType.PARAMETER_BOOL, bool_value=True))
-        self.declare_parameter('wait_web_ui', ParameterValue(type=ParameterType.PARAMETER_BOOL, bool_value=True))
-        self.declare_parameter('request_physical_access', ParameterValue(type=ParameterType.PARAMETER_BOOL, bool_value=True))
-        self.declare_parameter('enable_fci', ParameterValue(type=ParameterType.PARAMETER_BOOL, bool_value=True))
-        self.declare_parameter('robot_type', ParameterValue(type=ParameterType.PARAMETER_STRING, string_value='fr3'))
+        self.param_listener = franka_lock_unlock.ParamListener(self)
+        self.params = self.param_listener.get_params()
 
-        self.hostname = self.get_parameter('hostname').get_parameter_value().string_value
-        self.username= self.get_parameter('username').get_parameter_value().string_value
-        self.password= self.get_parameter('password').value
-        self.enable_relock = self.get_parameter('enable_relock').get_parameter_value().bool_value
-        self.wait_web_ui= self.get_parameter('wait_web_ui').get_parameter_value().bool_value
-        self.request_physical_access= self.get_parameter('request_physical_access').get_parameter_value().bool_value
-        self.enable_fci= self.get_parameter('enable_fci').get_parameter_value().bool_value
-        self.robot_type= self.get_parameter('robot_type').value
-        self.get_logger().debug(f"hostname: {self.hostname}, username: {self.username}, relock {self.enable_relock}, wait web ui: {self.wait_web_ui}, request physical access: {self.request_physical_access}, enable fci: {self.enable_fci}, robot type: {self.robot_type}")
+        self.get_logger().debug(f"hostname: {self.params.hostname}, username: {self.params.username}, relock {self.params.enable_relock}, wait web ui: {self.params.wait_web_ui}, request physical access: {self.params.request_physical_access}, enable fci: {self.params.enable_fci}, robot type: {self.params.robot_type}")
 
         # NOTE: resetting is handled by Node itself when the shutdown trigger is called.
-        self.franka_lock_unlock = FrankaLockUnlock(hostname=self.hostname, username=self.username, password=self.password)
+        self.franka_lock_unlock = FrankaLockUnlock(hostname=self.params.hostname, username=self.params.username, password=self.params.password)
 
         self.timer: Timer | None = None
         self._current_state = 'unconfigured'
@@ -60,19 +48,19 @@ class FrankLockUnlockNode(Node):
 
     def _validate_params(self) -> bool:
         """Validate the params."""
-        if not self.hostname or not self.hostname.strip():
-            self.get_logger().error("Parameter 'hostname' cannot be empty.")
+        if not self.params.hostname.strip():
+            self.get_logger().error("Parameter 'hostname' cannot be empty or whitespace-only.")
             return False
 
-        if not self.username or not self.username.strip():
-            self.get_logger().error("Parameter 'username' cannot be empty.")
+        if not self.params.username.strip():
+            self.get_logger().error("Parameter 'username' cannot be empty or whitespace-only.")
             return False
 
-        if not self.password or not self.password.strip():
-            self.get_logger().error("Parameter 'password' cannot be empty.")
+        if not self.params.password.strip():
+            self.get_logger().error("Parameter 'password' cannot be empty or whitespace-only.")
             return False
 
-        if self.request_physical_access and not self.wait_web_ui:
+        if self.params.request_physical_access and not self.params.wait_web_ui:
             self.get_logger().error(
                 "Invalid configuration: 'request_physical_access' is True, "
                 "but 'wait_web_ui' is False. (request requires wait)"
@@ -100,7 +88,7 @@ class FrankLockUnlockNode(Node):
             return TransitionCallbackReturn.ERROR
 
         # login
-        res, msg = self.franka_lock_unlock.try_login(self.request_physical_access)
+        res, msg = self.franka_lock_unlock.try_login(self.params.request_physical_access)
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
@@ -116,7 +104,7 @@ class FrankLockUnlockNode(Node):
         self.get_logger().info(
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'activate'"
         )
-        res, msg = self.franka_lock_unlock.try_lock_unlock(True, self.request_physical_access)
+        res, msg = self.franka_lock_unlock.try_lock_unlock(True, self.params.request_physical_access)
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
@@ -148,7 +136,7 @@ class FrankLockUnlockNode(Node):
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'shutdown'"
         )
         self._stop_timer()
-        if state.label == "active" or self.enable_relock:
+        if state.label == "active" or self.params.enable_relock:
             self.get_logger().info("Relocking robot before shutdown...")
             res, msg = self.franka_lock_unlock.try_lock_unlock(False)
             if not res:
@@ -186,7 +174,7 @@ class FrankLockUnlockNode(Node):
         if not self.franka_lock_unlock.is_logged_in():
             self.get_logger().info("Not logged in, nothing to clean up.")
             return
-        if self.enable_relock:
+        if self.params.enable_relock:
             res, msg = self.franka_lock_unlock.try_lock_unlock(False)
             if not res:
                 self.get_logger().error(msg)
@@ -212,13 +200,13 @@ class FrankLockUnlockNode(Node):
             self.get_logger().error(f"Reset: logout failed: {msg}")
             return
 
-        res, msg = self.franka_lock_unlock.try_login(self.request_physical_access)
+        res, msg = self.franka_lock_unlock.try_login(self.params.request_physical_access)
         if not res:
             self.get_logger().error(f"Reset: re-login failed: {msg}")
             return
 
         if was_active:
-            res, msg = self.franka_lock_unlock.try_lock_unlock(True, self.request_physical_access)
+            res, msg = self.franka_lock_unlock.try_lock_unlock(True, self.params.request_physical_access)
             if not res:
                 self.get_logger().error(f"Reset: re-unlock failed: {msg}")
                 return
