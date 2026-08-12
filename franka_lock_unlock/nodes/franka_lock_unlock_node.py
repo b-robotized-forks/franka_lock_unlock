@@ -170,14 +170,16 @@ class FrankLockUnlockNode(Node):
     def trigger_shutdown(self):
         """Triggers the shutdown when keyboard interrupt stops the launch file."""
         # TODO(Sachin): Check if there is other approach to deal with this
+        if not self.franka_lock_unlock.is_logged_in():
+            self.get_logger().info("Not logged in, nothing to clean up.")
+            return
         if self.enable_relock:
             res, msg = self.franka_lock_unlock.try_lock_unlock(False)
             if not res:
                 self.get_logger().error(msg)
-        if self.franka_lock_unlock.is_logged_in():
-            res, msg = self.franka_lock_unlock.try_logout()
-            if not res:
-                self.get_logger().error(msg)
+        res, msg = self.franka_lock_unlock.try_logout()
+        if not res:
+            self.get_logger().error(msg)
 
     def trigger_reset(self):
         """Triggers the reset before 24 hours."""
