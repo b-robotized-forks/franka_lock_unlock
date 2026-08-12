@@ -108,7 +108,7 @@ class FrankaLockUnlock(FrankaClient):
         """Try login to the system."""
         try:
             self._login()
-            if self._token is None or self._get_active_token_id() is not None:
+            if self._token is None and self._get_active_token_id() is not None:
                 # robot is currently in use
                 return False, "robot is currently in use"
             self._request_token(physically=request)
