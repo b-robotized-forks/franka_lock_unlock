@@ -36,6 +36,7 @@ class FrankLockUnlockNode(Node):
 
         self.timer: Timer | None = None
         self._current_state = 'unconfigured'
+        self._resetting_token = False
 
         self.get_logger().info(f"{self.get_name()} node started.")
 
@@ -109,6 +110,9 @@ class FrankLockUnlockNode(Node):
 
     def on_activate(self, state: State) -> TransitionCallbackReturn:
         """Handles the activate state."""
+        if self._resetting_token:
+            self.get_logger().error("Please wait token is resetting currently")
+            return TransitionCallbackReturn.ERROR
         self.get_logger().info(
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'activate'"
         )
@@ -121,6 +125,9 @@ class FrankLockUnlockNode(Node):
 
     def on_deactivate(self, state: State) -> TransitionCallbackReturn:
         """Handles the deactivate state."""
+        if self._resetting_token:
+            self.get_logger().error("Please wait token is resetting currently")
+            return TransitionCallbackReturn.ERROR
         self.get_logger().info(
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'deactivate'"
         )
@@ -134,6 +141,9 @@ class FrankLockUnlockNode(Node):
 
     def on_shutdown(self, state: State) -> TransitionCallbackReturn:
         """Handles the shutdown state."""
+        if self._resetting_token:
+            self.get_logger().error("Please wait token is resetting currently")
+            return TransitionCallbackReturn.ERROR
         self.get_logger().info(
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'shutdown'"
         )
@@ -154,6 +164,9 @@ class FrankLockUnlockNode(Node):
 
     def on_cleanup(self, state: State) -> TransitionCallbackReturn:
         """Handles the cleanup state."""
+        if self._resetting_token:
+            self.get_logger().error("Please wait token is resetting currently")
+            return TransitionCallbackReturn.ERROR
         self.get_logger().info(
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'cleanup'"
         )
@@ -184,6 +197,7 @@ class FrankLockUnlockNode(Node):
     def trigger_reset(self):
         """Triggers the reset before 24 hours."""
         self.get_logger().info("Refreshing Franka session before token expiry...")
+        self._resetting_token = True
 
         was_active = (self._current_state == 'active')
 
@@ -209,6 +223,7 @@ class FrankLockUnlockNode(Node):
                 self.get_logger().error(f"Reset: re-unlock failed: {msg}")
                 return
 
+        self._resetting_token = False
         self.get_logger().info("Franka session refreshed successfully.")
 
 def main(args=None):
