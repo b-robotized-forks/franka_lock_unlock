@@ -2,14 +2,14 @@
 
 <launch>
     <!-- Launch Arguments with Defaults -->
-    <arg name="hostname" default="localhost" />
-    <arg name="username" default="user" />
-    <arg name="password" default="strongpwd" />
-    <arg name="enable_relock" default="true" />
-    <arg name="wait_web_ui" default="true" />
-    <arg name="request_physical_access" default="true" />
-    <arg name="enable_fci" default="true" />
-    <arg name="robot_type" default="fr3" />
+    <arg name="hostname" default="localhost" /> <!-- Replace with the hostname -->
+    <arg name="username" default="user" /> <!-- Replace with the Username -->
+    <arg name="password" default="strongpwd" /> <!-- Replace with your password -->
+    <arg name="enable_relock" default="true" /> <!-- Relock the brakes on exit -->
+    <arg name="wait_web_ui" default="true" /> <!-- Wait in case the robot web UI is currently in use -->
+    <arg name="request_physical_access" default="true" /> <!-- Request control by confirming physical access to the robot in case the robot web UI is currently in use -->
+    <arg name="enable_fci" default="true" /> <!-- Activate the FCI -->
+    <arg name="robot_type" default="fr3" /> <!-- options: fr3, panda -->
 
     <node pkg="franka_lock_unlock"
         name="franka_lock_unlock_node"
