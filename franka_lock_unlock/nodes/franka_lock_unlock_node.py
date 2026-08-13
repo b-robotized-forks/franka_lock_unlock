@@ -5,9 +5,11 @@ from rclpy.lifecycle import Node, State, TransitionCallbackReturn
 
 from franka_lock_unlock.franka_lock_unlock_params import franka_lock_unlock
 from franka_lock_unlock.franka_lock_unlock import FrankaLockUnlock
+import subprocess
 
 HOURS_TO_RESET = 23
 RESET_TIME_IN_SECS = HOURS_TO_RESET * 60 * 60  # NOTE: the token expires after 24 hours
+TIME_IN_SECS_TO_PING_IP = 5 * 60
 
 
 class FrankLockUnlockNode(Node):
@@ -34,7 +36,29 @@ class FrankLockUnlockNode(Node):
         self._current_state = "unconfigured"
         self._resetting_token = False
 
+        # Timer to ping the IP and warn user
+        self.ping_timer = self.create_timer(TIME_IN_SECS_TO_PING_IP, self._ping_ip_callback)
+        self.get_logger().debug(
+            f"Timer added to ping the hostname: {self.params.hostname} every {TIME_IN_SECS_TO_PING_IP/60} minutes."
+        )
+
         self.get_logger().info(f"{self.get_name()} node started.")
+
+    def _ping_ip_callback(self):
+        """Ping the IP and warns the user if it is not reachable."""
+        # TODO(Sachin): If this problem is sever, then implement a fallback system, but if the IP is not reachable, then nothing can be done from the ROS2 Control side
+        try:
+            # -c 1: send 1 packet, -W 1: wait max 1 second for response (Linux)
+            subprocess.run(
+                ["ping", "-c", "1", "-W", "1", self.params.hostname.strip()],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+        except Exception as e:
+            self.get_logger().warn(
+                f"Failed to reach the hostname: {self.params.hostname} with error: {e}"
+            )
 
     def _start_timer(self):
         """Safely start the timer."""

@@ -10,12 +10,14 @@
     <arg name="request_physical_access" default="true" /> <!-- Request control by confirming physical access to the robot in case the robot web UI is currently in use -->
     <arg name="enable_fci" default="true" /> <!-- Activate the FCI -->
     <arg name="robot_type" default="fr3" /> <!-- options: fr3, panda -->
+    <arg name="log_level" default="debug" /> <!-- log level -->
 
     <node pkg="franka_lock_unlock"
         name="franka_lock_unlock_node"
         exec="franka_lock_unlock_node"
         output="screen"
-        emulate_tty="True">
+        emulate_tty="True"
+        args="--ros-args --log-level franka_lock_unlock_node:=$(var log_level)">
 
         <!-- Node Parameters -->
         <param name="hostname" value="$(var hostname)" />
