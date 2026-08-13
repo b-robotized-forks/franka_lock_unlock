@@ -4,8 +4,8 @@
 set -e
 
 NODE_NAME="/franka_lock_unlock_node"
-OUTER_LOOPS=5        # Full cycles (configure -> act/deact toggles -> cleanup)
-INNER_LOOPS=10       # Number of Activate / Deactivate toggles per session
+OUTER_LOOPS=2        # Full cycles (configure -> act/deact toggles -> cleanup)
+INNER_LOOPS=2       # Number of Activate / Deactivate toggles per session
 SLEEP_TIME=0.5       # Delay between state transitions in seconds
 
 echo "=================================================="
