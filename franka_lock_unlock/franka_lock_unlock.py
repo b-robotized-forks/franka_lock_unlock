@@ -126,11 +126,19 @@ class FrankaLockUnlock(FrankaClient):
         except Exception as e:
             return False, f"Exception: {e}"
 
-    def try_login(self, request: bool = False) -> tuple[bool, str]:
+    def try_login(self, request: bool = False, wait_web_ui: bool = False) -> tuple[bool, str]:
         """Try login to the system."""
         try:
             self._login()
             if self._token is None and self._get_active_token_id() is not None:
+                if wait_web_ui:
+                    # Consider the timeout of 20 s for requesting physical access to the robot
+                    self._request_token(physically=request)
+                    for _ in range(20):
+                        if self._is_active_token():
+                            return True, "Successfully take the control."
+                        sleep(1)
+
                 # robot is currently in use
                 return False, "robot is currently in use"
             self._request_token(physically=request)

@@ -118,7 +118,9 @@ class FrankLockUnlockNode(Node):
             return TransitionCallbackReturn.ERROR
 
         # login
-        res, msg = self.franka_lock_unlock.try_login(self.params.request_physical_access)
+        res, msg = self.franka_lock_unlock.try_login(
+            self.params.request_physical_access, self.params.wait_web_ui
+        )
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
