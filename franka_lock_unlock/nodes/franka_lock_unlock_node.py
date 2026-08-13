@@ -137,7 +137,7 @@ class FrankLockUnlockNode(Node):
             f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'activate'"
         )
         res, msg = self.franka_lock_unlock.try_lock_unlock(
-            True, self.params.request_physical_access
+            True, self.params.request_physical_access, enable_fci=self.params.enable_fci
         )
         if not res:
             self.get_logger().error(msg)
