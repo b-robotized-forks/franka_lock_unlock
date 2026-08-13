@@ -4,19 +4,19 @@ franka_lock_unlock:
     default_value: "localhost"
     description: "Hostname for the franka server to connect."
     validation:
-      not_empty: true
+      not_empty: []
   username:
     type: string
     default_value: "admin"
     description: "Username for the franka server to connect."
     validation:
-      not_empty: true
+      not_empty: []
   password:
     type: string
     default_value: "secretpwd"
     description: "Password for the franka server to connect."
     validation:
-      not_empty: true
+      not_empty: []
   robot_type:
     type: string
     default_value: "fr3"
