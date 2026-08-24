@@ -19,6 +19,7 @@ from urllib.parse import urljoin
 from requests.exceptions import RequestException
 from .franka_client import FrankaClient
 
+USER_GRANT_ACCESS_TIME = 30
 
 class FrankaLockUnlock(FrankaClient):
     def __init__(
@@ -80,7 +81,10 @@ class FrankaLockUnlock(FrankaClient):
         action = self._session.post(
             URL, files={"force": force}, headers={"X-Control-Token": self._token}
         )
-        assert action.status_code == 200, "Error requesting brake open/close action."
+        assert action.status_code == 200, (
+            f"Error requesting brake open/close action. "
+            f"Status: {action.status_code}, Response body: {action.text}"
+        )
         print(f'Successfully {"unlocked" if unlock else "locked"} the robot.')
 
     def try_acknowledge_and_execute_self_test(self) -> tuple[bool, str]:
@@ -155,6 +159,11 @@ class FrankaLockUnlock(FrankaClient):
                 # robot is currently in use
                 return False, "robot is currently in use"
             self._request_token(physically=request)
+            for _ in range(USER_GRANT_ACCESS_TIME):
+                print("Waiting for the user to grant access.")
+                if self._is_active_token():
+                    break
+                sleep(1)
             print("successfully connected.")
         except AssertionError as e:
             print(f"Assertion error: {e}")
