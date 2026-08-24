@@ -83,6 +83,19 @@ class FrankaLockUnlock(FrankaClient):
         assert action.status_code == 200, "Error requesting brake open/close action."
         print(f'Successfully {"unlocked" if unlock else "locked"} the robot.')
 
+    def try_acknowledge_and_execute_self_test(self) -> tuple[bool, str]:
+        """Perform self test on Franka required within 24h."""
+        res, msg =  self._acknowledge_self_test_error()
+        if not res:
+            return res, msg
+
+        res, msg = self._trigger_self_test()
+        if not res:
+            return res, msg
+
+        res, msg = self._wait_until_self_test_completes()
+        return res, msg
+
     def try_lock_unlock(
         self, unlock: bool, force: bool = False, enable_fci: bool = False
     ) -> tuple[bool, str]:

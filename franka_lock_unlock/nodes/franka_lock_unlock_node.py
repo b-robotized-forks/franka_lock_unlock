@@ -124,6 +124,11 @@ class FrankLockUnlockNode(Node):
         if not res:
             self.get_logger().error(msg)
             return TransitionCallbackReturn.FAILURE
+        self.get_logger().info("Running self-test")
+        res, msg = self.franka_lock_unlock.try_acknowledge_and_execute_self_test()
+        if not res:
+            self.get_logger().error(msg)
+            return TransitionCallbackReturn.FAILURE
         self._start_timer()
         self._current_state = "inactive"
         return TransitionCallbackReturn.SUCCESS
@@ -237,6 +242,11 @@ class FrankLockUnlockNode(Node):
         res, msg = self.franka_lock_unlock.try_login(self.params.request_physical_access)
         if not res:
             self.get_logger().error(f"Reset: re-login failed: {msg}")
+            return
+
+        res, msg = self.franka_lock_unlock.try_acknowledge_and_execute_self_test()
+        if not res:
+            self.get_logger().error(msg)
             return
 
         if was_active:

@@ -15,7 +15,9 @@ import base64
 import requests
 from urllib.parse import urljoin
 from http import HTTPStatus
+from time import sleep
 
+SELF_TEST_WAIT = 120 # seconds
 
 class FrankaClient(ABC):
     def __init__(
@@ -129,3 +131,45 @@ class FrankaClient(ABC):
     @abstractmethod
     def run(self) -> None:
         pass
+
+    def _acknowledge_self_test_error(self, error_id: str = "TD2Timeout") -> tuple[bool, str]:
+        """Acknolwedges the self test error if occured."""
+        headers = {"X-Control-Token": self._token}
+
+        # Acknowledge the error (if required)
+        ack_url = urljoin(
+            self._hostname,
+            f"/admin/api/safety/recoverable-safety-errors/acknowledge?error_id={error_id}",
+        )
+        ack_res = self._session.post(ack_url, headers=headers, timeout=self.timeout)
+
+        if ack_res.status_code in (200, 204):
+            return True, f"Successfully acknowledged error '{error_id}'."
+        elif (
+            ack_res.status_code == 424 and "NoAckRequired" in ack_res.text
+        ) or ack_res.status_code == 404:
+            return True,  "No acknowledgment required (already acknowledged or not pending). Proceeding to execution..."
+        else:
+            return False, f"Acknowledgment returned {ack_res.status_code}: {ack_res.text}. Attempting execution anyway..."
+
+    def _trigger_self_test(self) -> tuple[bool, str]:
+        """Triggers the Self Test."""
+        headers = {"X-Control-Token": self._token}
+        exec_url = urljoin(self._hostname, "/admin/api/safety/td2-tests/execute")
+        print("Executing TD2 self-test...")
+        exec_res = self._session.post(exec_url, headers=headers, timeout=self.timeout)
+
+        if exec_res.status_code not in (200, 204):
+            # 424 ActionUnavailable can mean no test is pending/needed right now
+            if exec_res.status_code == 424:
+                return True, f"TD2 execute unavailable ({exec_res.text}). System may already be operational."
+            return False, f"Failed to execute TD2 test: {exec_res.status_code} - {exec_res.text}"
+        return True, "TD2 self-test triggered successfully. Waiting for completion..."
+
+    def _wait_until_self_test_completes(self) -> tuple[bool, str]:
+        """Waits until the self test completes."""
+        # NOTE: Currently there is no API to check the status of the Franka Robot to check if self-test is completed.
+        # Hence, we wait 2 mins which is tested on the FR3.
+        #
+        sleep(SELF_TEST_WAIT)
+        return True, "Self test completed."
