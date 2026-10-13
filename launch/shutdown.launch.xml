@@ -1,6 +1,6 @@
 <launch>
     <arg name="hostname"/>
-    <arg name="username" default="admin"/>
+    <arg name="username"/>
     <arg name="password"/>
     <arg name="namespace" default=""/>
 

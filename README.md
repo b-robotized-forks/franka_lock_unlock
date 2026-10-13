@@ -127,7 +127,7 @@ To use the Franka Lock Unlock Lifecycle Node with Namespace, use the below comma
 ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml namespace:=<namespace> hostname:=$HOSTNAME_OR_IP username:=$USERNAME password:=$PASSWORD
 ```
 
-### Lifecycle Stress Test
+### Lifecycle Test
 
 `test/hard_test.sh` cycles the lifecycle node through configure/activate/deactivate/cleanup/shutdown. Pass the namespace as the first argument if the node is namespaced:
 
