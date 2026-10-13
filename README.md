@@ -119,63 +119,13 @@ ros2 lifecycle set /franka_lock_unlock_node cleanup
 ros2 lifecycle set /franka_lock_unlock_node shutdown
 ```
 
-#### Launch Arguments
+### Using Franka Lock Unlock Lifecycle Node with Namespace
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `hostname` | `localhost` | The Franka Desk IP address or hostname. |
-| `username` | `user` | The Franka Desk username. |
-| `password` | `strongpwd` | The Franka Desk password. |
-| `robot_type` | `fr3` | Robot type: `fr3` or `panda`. |
-| `enable_relock` | `true` | Relock the brakes on exit. |
-| `wait_web_ui` | `true` | Wait in case the robot web UI is currently in use. |
-| `request_physical_access` | `true` | Request control by confirming physical access to the robot in case the robot web UI is currently in use. Requires `wait_web_ui:=true`. |
-| `enable_fci` | `true` | Activate the Franka Control Interface (FCI). |
-| `log_level` | `debug` | Log level of the node. |
-| `namespace` | `""` | Namespace of the node, e.g. `robot1` or `cell_a/robot1`. |
-
-### Namespaces
-
-All launch files accept an optional `namespace` argument. This allows running one node per robot, e.g. in a multi-robot setup. Without it, the node runs in the root namespace as before.
+To use the Franka Lock Unlock Lifecycle Node with Namespace, use the below command
 
 ```bash
-ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml namespace:=robot1 hostname:=$HOSTNAME_OR_IP username:=$USERNAME password:=$PASSWORD
+ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml namespace:=<namespace> hostname:=$HOSTNAME_OR_IP username:=$USERNAME password:=$PASSWORD
 ```
-
-The node is then available as `/robot1/franka_lock_unlock_node`, so the lifecycle commands have to use the namespaced name:
-
-```bash
-ros2 lifecycle set /robot1/franka_lock_unlock_node configure
-ros2 lifecycle set /robot1/franka_lock_unlock_node activate
-```
-
-Two robots can be handled side by side by launching the file once per robot with a different `namespace` and `hostname`:
-
-```bash
-ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml namespace:=robot1 hostname:=$ROBOT1_IP username:=$USERNAME password:=$PASSWORD
-ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml namespace:=robot2 hostname:=$ROBOT2_IP username:=$USERNAME password:=$PASSWORD
-```
-
-The `log_level` argument is applied to the namespaced logger (e.g. `robot1.franka_lock_unlock_node`), so it keeps working with any namespace.
-
-The same `namespace` argument is available for `start.launch.xml` and `shutdown.launch.xml`:
-
-```sh
-ros2 launch franka_lock_unlock start.launch.xml namespace:=robot1 hostname:=$HOSTNAME_OR_IP username:=$USERNAME password:=$PASSWORD
-```
-
-To include the launch file from another XML launch file, pass the argument as usual:
-
-```xml
-<include file="$(find-pkg-share franka_lock_unlock)/launch/franka_lock_unlock.launch.xml">
-    <arg name="namespace" value="robot1" />
-    <arg name="hostname" value="$(var robot1_ip)" />
-    <arg name="username" value="$(var username)" />
-    <arg name="password" value="$(var password)" />
-</include>
-```
-
-> **Note:** to run without a namespace, omit the argument. `ros2 launch` rejects an empty value such as `namespace:=`.
 
 ### Lifecycle Stress Test
 
