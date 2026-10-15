@@ -118,3 +118,20 @@ ros2 lifecycle set /franka_lock_unlock_node cleanup
 # shutdown
 ros2 lifecycle set /franka_lock_unlock_node shutdown
 ```
+
+### Using Franka Lock Unlock Lifecycle Node with Namespace
+
+To use the Franka Lock Unlock Lifecycle Node with Namespace, use the below command
+
+```bash
+ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml namespace:=<namespace> hostname:=$HOSTNAME_OR_IP username:=$USERNAME password:=$PASSWORD
+```
+
+### Lifecycle Test
+
+`test/hard_test.sh` cycles the lifecycle node through configure/activate/deactivate/cleanup/shutdown. Pass the namespace as the first argument if the node is namespaced:
+
+```bash
+./test/hard_test.sh           # /franka_lock_unlock_node
+./test/hard_test.sh robot1    # /robot1/franka_lock_unlock_node
+```

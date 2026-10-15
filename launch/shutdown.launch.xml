@@ -1,9 +1,11 @@
 <launch>
     <arg name="hostname"/>
-    <arg name="username" default="admin"/>
+    <arg name="username"/>
     <arg name="password"/>
+    <arg name="namespace" default=""/>
 
     <node name="franka_shutdown"
+          namespace="$(var namespace)"
           pkg="franka_lock_unlock"
           exec="franka_shutdown"
           output="screen"

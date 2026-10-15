@@ -3,7 +3,9 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-NODE_NAME="/franka_lock_unlock_node"
+# Optional namespace of the node, e.g. ./hard_test.sh robot1
+NAMESPACE="${1:-}"
+NODE_NAME="$(echo "/${NAMESPACE}/franka_lock_unlock_node" | tr -s '/')"
 OUTER_LOOPS=2        # Full cycles (configure -> act/deact toggles -> cleanup)
 INNER_LOOPS=2       # Number of Activate / Deactivate toggles per session
 SLEEP_TIME=0.5       # Delay between state transitions in seconds

@@ -2,8 +2,10 @@
     <arg name="hostname"/>
     <arg name="username" default="admin"/>
     <arg name="password"/>
+    <arg name="namespace" default=""/>
 
     <node name="franka_lock_unlock"
+          namespace="$(var namespace)"
           pkg="franka_lock_unlock"
           exec="franka_lock_unlock"
           output="screen"
