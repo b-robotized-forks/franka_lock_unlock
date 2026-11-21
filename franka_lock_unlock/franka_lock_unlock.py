@@ -11,7 +11,7 @@
 # https://github.com/ib101/DVK/blob/master/Code/DVK.py
 
 from itertools import count
-from time import sleep
+from time import monotonic, sleep
 from threading import Event
 import atexit
 import argparse
@@ -144,6 +144,19 @@ class FrankaLockUnlock(FrankaClient):
         except Exception as e:
             return False, f"Exception: {e}"
 
+    def _renew_token_request(self, request: bool) -> None:
+        """Send the token request again; Desk cancels a request after 20 s."""
+        if self._token is not None:
+            try:
+                self._release_token()
+            except AssertionError:
+                # Desk already cancelled the request
+                self._token = None
+                self._token_id = None
+        self._request_token(physically=request)
+        if request:
+            print("Press the button with the (blue) circle on the robot to confirm physical access.")
+
     def try_login(
         self, request: bool = False, wait_web_ui: bool = False, access_timeout: int = 20
     ) -> tuple[bool, str]:
@@ -157,18 +170,14 @@ class FrankaLockUnlock(FrankaClient):
             self._login()
             if self._token is None and self._get_active_token_id() is not None:
                 if wait_web_ui:
-                    for second in range(access_timeout):
-                        if second % 20 == 0:
-                            if self._token is not None:
-                                self._release_token()
-                            self._request_token(physically=request)
-                            if request:
-                                print(
-                                    "Press the button with the (blue) circle on the robot "
-                                    "to confirm physical access."
-                                )
-                        if self._is_active_token():
+                    deadline = monotonic() + access_timeout
+                    next_request = 0.0
+                    while monotonic() < deadline:
+                        if self._token is not None and self._is_active_token():
                             return True, "Successfully take the control."
+                        if monotonic() >= next_request:
+                            self._renew_token_request(request)
+                            next_request = monotonic() + 20
                         sleep(1)
 
                 # robot is currently in use
