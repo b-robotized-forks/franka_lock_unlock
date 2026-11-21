@@ -109,7 +109,11 @@ class FrankLockUnlockNode(Node):
         )
 
     def _login(self, robot: FrankaLockUnlock) -> Result:
-        return robot.try_login(self.params.request_physical_access, self.params.wait_web_ui)
+        return robot.try_login(
+            self.params.request_physical_access,
+            self.params.wait_web_ui,
+            self.params.physical_access_timeout,
+        )
 
     def _logout(self, robot: FrankaLockUnlock) -> Result:
         return robot.try_logout()

@@ -37,6 +37,12 @@ franka_lock_unlock:
     type: bool
     default_value: true
     description: "Request control by confirming physical access to the robot in case the robot web UI is currently in use"
+  physical_access_timeout:
+    type: int
+    default_value: 20
+    description: "Time in seconds to wait for the control when another user has it: confirmation in Desk or, with 'request_physical_access', the button on the robot."
+    validation:
+      gt<>: [0]
   enable_fci:
     type: bool
     default_value: true
