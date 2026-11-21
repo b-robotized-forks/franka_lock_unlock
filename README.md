@@ -146,3 +146,14 @@ ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml namespace:=<namespa
 ./test/hard_test.sh           # /franka_lock_unlock_node
 ./test/hard_test.sh robot1    # /robot1/franka_lock_unlock_node
 ```
+
+### Test Without a Robot
+
+`test/mock_desk.py` is a mock of the Franka Desk REST API that this package uses (HTTPS, FR3 joint paths, no authentication check). The endpoints come from the client code, not from a real Desk.
+`test/mock_test.sh` starts one mock Desk per robot on `127.0.0.2`, `127.0.0.3`, ..., runs the node with `autostart_state:=active` (self-test wait 1 s), stops it with SIGTERM and prints the node and Desk logs.
+
+```bash
+./test/mock_test.sh 1                  # one robot
+./test/mock_test.sh 2 --fail-unlock    # the unlock of the last robot fails: the others are locked again
+./test/mock_test.sh 2 --in-use         # another owner holds the control token of the last robot
+```
