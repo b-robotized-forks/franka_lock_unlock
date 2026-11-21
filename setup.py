@@ -1,4 +1,6 @@
+from contextlib import redirect_stdout
 from glob import glob
+import os
 from setuptools import find_packages, setup
 import sys
 
@@ -6,12 +8,17 @@ package_name = "franka_lock_unlock"
 
 
 if len(sys.argv) >= 2 and sys.argv[1] != "clean":
-    from generate_parameter_library_py.setup_helper import generate_parameter_module
+    from generate_parameter_library_py.generate_python_module import run
 
-    # set module_name and yaml file
-    module_name = "franka_lock_unlock_params"
-    yaml_file = "franka_lock_unlock/params.yaml"
-    generate_parameter_module(module_name, yaml_file)
+    # Generate the parameter module into the package folder: setuptools then
+    # installs it for every install layout (also --merge-install).
+    # stdout goes to stderr: colcon reads the setup data from stdout.
+    with redirect_stdout(sys.stderr):
+        run(
+            os.path.join(package_name, "franka_lock_unlock_params.py"),
+            os.path.join(package_name, "params.yaml"),
+            "",
+        )
 
 setup(
     name=package_name,
