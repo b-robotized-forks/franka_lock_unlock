@@ -17,7 +17,8 @@ from urllib.parse import urljoin
 from http import HTTPStatus
 from time import sleep
 
-SELF_TEST_WAIT = 120 # seconds
+SELF_TEST_WAIT = 120  # seconds
+
 
 class FrankaClient(ABC):
     def __init__(
@@ -90,11 +91,22 @@ class FrankaClient(ABC):
                 "The robot is shutting down. Please wait for the yellow lights to turn off, then switch the control box off."
             )
 
-    def _get_active_token_id(self):
+    def _get_active_token(self):
+        """Return the active control token (dict, e.g. 'id' and 'ownedBy') or None."""
         token_query = self._session.get(urljoin(self._hostname, "/admin/api/control-token"))
         assert token_query.status_code == HTTPStatus.OK, "Error getting control token status."
-        json = token_query.json()
-        return None if json["activeToken"] is None else json["activeToken"]["id"]
+        return token_query.json()["activeToken"]
+
+    def _get_active_token_id(self):
+        active_token = self._get_active_token()
+        return None if active_token is None else active_token["id"]
+
+    def has_control(self) -> bool:
+        """Return True if this client holds the active control token."""
+        try:
+            return self._token_id is not None and self._get_active_token_id() == self._token_id
+        except (AssertionError, requests.exceptions.RequestException):
+            return False
 
     def _is_active_token(self):
         active_token_id = self._get_active_token_id()
@@ -133,7 +145,7 @@ class FrankaClient(ABC):
         pass
 
     def _acknowledge_self_test_error(self, error_id: str = "TD2Timeout") -> tuple[bool, str]:
-        """Acknolwedges the self test error if occured."""
+        """Acknowledge the self test error if it occurred."""
         headers = {"X-Control-Token": self._token}
 
         # Acknowledge the error (if required)
@@ -148,9 +160,15 @@ class FrankaClient(ABC):
         elif (
             ack_res.status_code == 424 and "NoAckRequired" in ack_res.text
         ) or ack_res.status_code == 404:
-            return True,  "No acknowledgment required (already acknowledged or not pending). Proceeding to execution..."
+            return (
+                True,
+                "No acknowledgment required (already acknowledged or not pending). Proceeding to execution...",
+            )
         else:
-            return False, f"Acknowledgment returned {ack_res.status_code}: {ack_res.text}. Attempting execution anyway..."
+            return (
+                False,
+                f"Acknowledgment returned {ack_res.status_code}: {ack_res.text}. Attempting execution anyway...",
+            )
 
     def _trigger_self_test(self) -> tuple[bool, str]:
         """Triggers the Self Test."""
@@ -162,12 +180,15 @@ class FrankaClient(ABC):
         if exec_res.status_code not in (200, 204):
             # 424 ActionUnavailable can mean no test is pending/needed right now
             if exec_res.status_code == 424:
-                return True, f"TD2 execute unavailable ({exec_res.text}). System may already be operational."
+                return (
+                    True,
+                    f"TD2 execute unavailable ({exec_res.text}). System may already be operational.",
+                )
             return False, f"Failed to execute TD2 test: {exec_res.status_code} - {exec_res.text}"
         return True, "TD2 self-test triggered successfully. Waiting for completion..."
 
     def _wait_until_self_test_completes(self) -> tuple[bool, str]:
-        """Waits until the self test completes."""
+        """Wait until the self test completes."""
         # NOTE: Currently there is no API to check the status of the Franka Robot to check if self-test is completed.
         # Hence, we wait 2 mins which is tested on the FR3.
         #

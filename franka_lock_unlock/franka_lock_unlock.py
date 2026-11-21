@@ -21,6 +21,7 @@ from .franka_client import FrankaClient
 
 USER_GRANT_ACCESS_TIME = 30
 
+
 class FrankaLockUnlock(FrankaClient):
     def __init__(
         self,
@@ -89,7 +90,7 @@ class FrankaLockUnlock(FrankaClient):
 
     def try_acknowledge_and_execute_self_test(self) -> tuple[bool, str]:
         """Perform self test on Franka required within 24h."""
-        res, msg =  self._acknowledge_self_test_error()
+        res, msg = self._acknowledge_self_test_error()
         if not res:
             return res, msg
 
@@ -157,7 +158,10 @@ class FrankaLockUnlock(FrankaClient):
                         sleep(1)
 
                 # robot is currently in use
-                return False, "robot is currently in use"
+                active_token = {
+                    k: v for k, v in (self._get_active_token() or {}).items() if k != "token"
+                }
+                return False, f"robot is currently in use, active control token: {active_token}"
             self._request_token(physically=request)
             for _ in range(USER_GRANT_ACCESS_TIME):
                 print("Waiting for the user to grant access.")

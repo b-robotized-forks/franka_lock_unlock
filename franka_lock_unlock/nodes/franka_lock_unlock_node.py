@@ -180,9 +180,9 @@ class FrankLockUnlockNode(Node):
             self.get_logger().error("Params are not valid. Please recheck them.")
             return TransitionCallbackReturn.ERROR
 
-        logged_in = self._run("login", self._login)
-        if len(logged_in) != len(self.robots):
-            self._run("logout", self._logout, logged_in)
+        if not self._run_all("login", self._login):
+            # Also the robots with a failed login: release the token request and log out.
+            self._run_all("logout", self._logout)
             return TransitionCallbackReturn.FAILURE
 
         self.get_logger().info("Running self-test")
@@ -277,7 +277,9 @@ class FrankLockUnlockNode(Node):
             self.get_logger().info("Not logged in, nothing to clean up.")
             return
         if self.params.enable_relock:
-            self._run("lock", self._lock, logged_in)
+            # Lock only the robots that this node controls.
+            with_control = [h for h in logged_in if self.robots[h].has_control()]
+            self._run("lock", self._lock, with_control)
         self._run("logout", self._logout, logged_in)
 
     def trigger_reset(self):
