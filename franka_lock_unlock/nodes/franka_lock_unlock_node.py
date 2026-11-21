@@ -1,15 +1,17 @@
+import requests
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.timer import Timer
 from rclpy.lifecycle import Node, State, TransitionCallbackReturn
 
 
 from franka_lock_unlock.franka_lock_unlock_params import franka_lock_unlock
 from franka_lock_unlock.franka_lock_unlock import FrankaLockUnlock
-import subprocess
 
 HOURS_TO_RESET = 23
 RESET_TIME_IN_SECS = HOURS_TO_RESET * 60 * 60  # NOTE: the token expires after 24 hours
-TIME_IN_SECS_TO_PING_IP = 5 * 60
+TIME_IN_SECS_TO_CHECK_DESK = 5 * 60
+DESK_CHECK_TIMEOUT = 3.0  # seconds
 
 
 class FrankLockUnlockNode(Node):
@@ -30,35 +32,31 @@ class FrankLockUnlockNode(Node):
             hostname=self.params.hostname,
             username=self.params.username,
             password=self.params.password,
+            robot_type=self.params.robot_type,
         )
 
         self.timer: Timer | None = None
         self._current_state = "unconfigured"
         self._resetting_token = False
 
-        # Timer to ping the IP and warn user
-        self.ping_timer = self.create_timer(TIME_IN_SECS_TO_PING_IP, self._ping_ip_callback)
-        self.get_logger().debug(
-            f"Timer added to ping the hostname: {self.params.hostname} every {TIME_IN_SECS_TO_PING_IP/60} minutes."
+        # Check that Franka Desk answers. No ICMP: 'ping' is not available in a strict snap.
+        self._check_desk_callback()
+        self.desk_check_timer = self.create_timer(
+            TIME_IN_SECS_TO_CHECK_DESK, self._check_desk_callback
         )
 
         self.get_logger().info(f"{self.get_name()} node started.")
 
-    def _ping_ip_callback(self):
-        """Ping the IP and warns the user if it is not reachable."""
-        # TODO(Sachin): If this problem is sever, then implement a fallback system, but if the IP is not reachable, then nothing can be done from the ROS2 Control side
+    def _check_desk_callback(self):
+        """Send an HTTPS request to Franka Desk (no login) and warn if it does not answer."""
+        url = f"https://{self.params.hostname.strip()}/"
         try:
-            # -c 1: send 1 packet, -W 1: wait max 1 second for response (Linux)
-            subprocess.run(
-                ["ping", "-c", "1", "-W", "1", self.params.hostname.strip()],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=True,
+            response = requests.get(url, timeout=DESK_CHECK_TIMEOUT, verify=False)
+            self.get_logger().info(
+                f"Franka Desk at '{url}' answers (HTTP {response.status_code}).", once=True
             )
-        except Exception as e:
-            self.get_logger().warn(
-                f"Failed to reach the hostname: {self.params.hostname} with error: {e}"
-            )
+        except requests.exceptions.RequestException as e:
+            self.get_logger().warn(f"Franka Desk at '{url}' does not answer: {e}")
 
     def _start_timer(self):
         """Safely start the timer."""
@@ -207,9 +205,20 @@ class FrankLockUnlockNode(Node):
         self._current_state = "unconfigured"
         return TransitionCallbackReturn.SUCCESS
 
-    def trigger_shutdown(self):
-        """Triggers the shutdown when keyboard interrupt stops the launch file."""
-        # TODO(Sachin): Check if there is other approach to deal with this
+    def autostart(self):
+        """Go to the lifecycle state of the parameter 'autostart_state'."""
+        if self.params.autostart_state == "unconfigured":
+            return
+        self.get_logger().info(f"Autostart to state '{self.params.autostart_state}'.")
+        if self.trigger_configure() != TransitionCallbackReturn.SUCCESS:
+            self.get_logger().error("Autostart: configure failed.")
+            return
+        if self.params.autostart_state == "active":
+            if self.trigger_activate() != TransitionCallbackReturn.SUCCESS:
+                self.get_logger().error("Autostart: activate failed.")
+
+    def release_on_exit(self):
+        """Relock (if enabled) and log out when the process stops."""
         if not self.franka_lock_unlock.is_logged_in():
             self.get_logger().info("Not logged in, nothing to clean up.")
             return
@@ -225,7 +234,13 @@ class FrankLockUnlockNode(Node):
         """Triggers the reset before 24 hours."""
         self.get_logger().info("Refreshing Franka session before token expiry...")
         self._resetting_token = True
+        try:
+            self._refresh_session()
+        finally:
+            self._resetting_token = False
 
+    def _refresh_session(self):
+        """Log out and in again, run the self-test and restore the unlocked state."""
         was_active = self._current_state == "active"
 
         if was_active:
@@ -239,7 +254,9 @@ class FrankLockUnlockNode(Node):
             self.get_logger().error(f"Reset: logout failed: {msg}")
             return
 
-        res, msg = self.franka_lock_unlock.try_login(self.params.request_physical_access)
+        res, msg = self.franka_lock_unlock.try_login(
+            self.params.request_physical_access, self.params.wait_web_ui
+        )
         if not res:
             self.get_logger().error(f"Reset: re-login failed: {msg}")
             return
@@ -251,26 +268,29 @@ class FrankLockUnlockNode(Node):
 
         if was_active:
             res, msg = self.franka_lock_unlock.try_lock_unlock(
-                True, self.params.request_physical_access
+                True, self.params.request_physical_access, enable_fci=self.params.enable_fci
             )
             if not res:
                 self.get_logger().error(f"Reset: re-unlock failed: {msg}")
                 return
 
-        self._resetting_token = False
         self.get_logger().info("Franka session refreshed successfully.")
 
 
 def main(args=None):
+    # rclpy handles SIGINT and SIGTERM (e.g. 'snap stop'): both relock and log out.
     rclpy.init(args=args)
+    node = None
     try:
         node = FrankLockUnlockNode()
+        node.autostart()
         rclpy.spin(node)
-    except KeyboardInterrupt:
-        node.get_logger().info("SIGINT received. Triggering lifecycle shutdown...")
-        node.trigger_shutdown()
+    except (KeyboardInterrupt, ExternalShutdownException):
+        if node is not None:
+            node.get_logger().info("Stop signal received. Relocking and logging out...")
+            node.release_on_exit()
     finally:
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == "__main__":

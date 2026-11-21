@@ -12,6 +12,11 @@
         <choice value="fr3" />
         <choice value="panda" />
     </arg>
+    <arg name="autostart_state" default="unconfigured" description="Lifecycle state at start">
+        <choice value="unconfigured" />
+        <choice value="inactive" />
+        <choice value="active" />
+    </arg>
     <arg name="namespace" default="" description="Namespace of the node, e.g. &quot;robot1&quot; or &quot;cell_a/robot1&quot;" />
 
     <node pkg="franka_lock_unlock"
@@ -30,6 +35,7 @@
         <param name="request_physical_access" value="$(var request_physical_access)" />
         <param name="enable_fci" value="$(var enable_fci)" />
         <param name="robot_type" value="$(var robot_type)" />
+        <param name="autostart_state" value="$(var autostart_state)" />
 
     </node>
 </launch>
