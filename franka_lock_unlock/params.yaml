@@ -1,10 +1,12 @@
 franka_lock_unlock:
-  hostname:
-    type: string
-    default_value: "localhost"
-    description: "Hostname for the franka server to connect."
+  hostnames:
+    type: string_array
+    default_value: ["localhost"]
+    read_only: true
+    description: "Hostnames or IP addresses of the Franka Desk of each robot. All robots share the other parameters and the lifecycle state."
     validation:
-      not_empty: []
+      not_empty<>: []
+      unique<>: []
   username:
     type: string
     default_value: "admin"

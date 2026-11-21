@@ -101,7 +101,7 @@ ros2 launch franka_lock_unlock shutdown.launch.xml hostname:=<HOSTNAME> username
 If you want to launch the controller as a ROS2 Lifecycle Node, follow the below commands.
 
 ```bash
-ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml hostname:=$HOSTNAME_OR_IP username:=$USERNAME password:=$PASSWORD
+ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml hostnames:="[$HOSTNAME_OR_IP]" username:=$USERNAME password:=$PASSWORD
 
 # configure
 ros2 lifecycle set /franka_lock_unlock_node configure
@@ -119,12 +119,23 @@ ros2 lifecycle set /franka_lock_unlock_node cleanup
 ros2 lifecycle set /franka_lock_unlock_node shutdown
 ```
 
+### Multiple Robots
+
+The parameter `hostnames` takes one or more robots. All robots use the same `username`, `password` and other parameters, and share one lifecycle state: each transition runs on all robots in parallel.
+When a transition fails on one robot, the node returns the other robots to the previous state (for example, it locks them again when the unlock of one robot fails).
+
+```bash
+ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml hostnames:="[10.0.0.2, 10.0.0.3]" username:=$USERNAME password:=$PASSWORD
+```
+
+The parameter `autostart_state` (`unconfigured`, `inactive` or `active`) sets the lifecycle state that the node goes to at start.
+
 ### Using Franka Lock Unlock Lifecycle Node with Namespace
 
 To use the Franka Lock Unlock Lifecycle Node with Namespace, use the below command
 
 ```bash
-ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml namespace:=<namespace> hostname:=$HOSTNAME_OR_IP username:=$USERNAME password:=$PASSWORD
+ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml namespace:=<namespace> hostnames:="[$HOSTNAME_OR_IP]" username:=$USERNAME password:=$PASSWORD
 ```
 
 ### Lifecycle Test

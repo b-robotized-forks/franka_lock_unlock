@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <launch>
-    <arg name="hostname" description="Hostname or IP address of the robot" />
+    <arg name="hostnames" description="Hostnames or IP addresses of the robots as a YAML list, e.g. &quot;[10.0.0.2, 10.0.0.3]&quot;" />
     <arg name="username" description="Username for the robot web UI" />
     <arg name="password" description="Password for the robot web UI" />
     <arg name="enable_relock" default="true" description="Relock the brakes on exit" />
@@ -27,7 +27,7 @@
         emulate_tty="True">
 
         <!-- Node Parameters -->
-        <param name="hostname" value="$(var hostname)" />
+        <param name="hostnames" value="$(var hostnames)" />
         <param name="username" value="$(var username)" />
         <param name="password" value="$(var password)" />
         <param name="enable_relock" value="$(var enable_relock)" />
