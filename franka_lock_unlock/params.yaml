@@ -47,10 +47,3 @@ franka_lock_unlock:
     type: bool
     default_value: true
     description: "Activate the Franka Control Interface (FCI)."
-  autostart_state:
-    type: string
-    default_value: "unconfigured"
-    read_only: true
-    description: "Lifecycle state that the node goes to at start: 'unconfigured' (no action), 'inactive' (login, control token, self-test) or 'active' (also unlock the brakes and activate the FCI)."
-    validation:
-      one_of<>: [ ["unconfigured", "inactive", "active"] ]

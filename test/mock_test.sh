@@ -5,8 +5,8 @@
 #   ./test/mock_test.sh [number of robots] [mock argument for the last robot]
 #   ./test/mock_test.sh 2 --fail-unlock
 #
-# The node starts with autostart_state 'active' (self-test wait shortened to
-# 1 s), then stops with SIGTERM: check that all robots are unlocked, then locked
+# The script configures and activates the node (self-test wait shortened to
+# 1 s), then stops it with SIGTERM: check that all robots are unlocked, then locked
 # and logged out.
 set -u
 # Local DDS, no router needed. With rmw_zenoh_cpp, SIGTERM to the node also
@@ -39,9 +39,11 @@ from franka_lock_unlock.nodes.franka_lock_unlock_node import main
 sys.exit(main())
 PY
 python3 "$TMP/run_node.py" --ros-args -p "hostnames:=[$HOSTNAMES]" -p password:=x \
-    -p autostart_state:=active > "$TMP/node.log" 2>&1 &
+    > "$TMP/node.log" 2>&1 &
 NODE=$!
-sleep $((ROBOTS * 2 + 25))
+sleep 3
+ros2 lifecycle set /franka_lock_unlock_node configure
+ros2 lifecycle set /franka_lock_unlock_node activate
 kill -TERM $NODE
 wait $NODE
 

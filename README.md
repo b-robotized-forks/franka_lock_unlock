@@ -128,7 +128,7 @@ When a transition fails on one robot, the node returns the other robots to the p
 ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml hostnames:="[10.0.0.2, 10.0.0.3]" username:=$USERNAME password:=$PASSWORD
 ```
 
-The parameter `autostart_state` (`unconfigured`, `inactive` or `active`) sets the lifecycle state that the node goes to at start.
+The node starts in the state `unconfigured` and does not access the robots. The transitions come only from outside (`ros2 lifecycle set` or another component).
 
 ### Using Franka Lock Unlock Lifecycle Node with Namespace
 
@@ -150,7 +150,7 @@ ros2 launch franka_lock_unlock franka_lock_unlock.launch.xml namespace:=<namespa
 ### Test Without a Robot
 
 `test/mock_desk.py` is a mock of the Franka Desk REST API that this package uses (HTTPS, FR3 joint paths, no authentication check). The endpoints come from the client code, not from a real Desk.
-`test/mock_test.sh` starts one mock Desk per robot on `127.0.0.2`, `127.0.0.3`, ..., runs the node with `autostart_state:=active` (self-test wait 1 s), stops it with SIGTERM and prints the node and Desk logs.
+`test/mock_test.sh` starts one mock Desk per robot on `127.0.0.2`, `127.0.0.3`, ..., runs the node (self-test wait 1 s), sends configure and activate with `ros2 lifecycle set`, stops the node with SIGTERM and prints the node and Desk logs.
 
 ```bash
 ./test/mock_test.sh 1                  # one robot

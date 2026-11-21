@@ -262,18 +262,6 @@ class FrankLockUnlockNode(Node):
         self._current_state = "unconfigured"
         return TransitionCallbackReturn.SUCCESS
 
-    def autostart(self):
-        """Go to the lifecycle state of the parameter 'autostart_state'."""
-        if self.params.autostart_state == "unconfigured":
-            return
-        self.get_logger().info(f"Autostart to state '{self.params.autostart_state}'.")
-        if self.trigger_configure() != TransitionCallbackReturn.SUCCESS:
-            self.get_logger().error("Autostart: configure failed.")
-            return
-        if self.params.autostart_state == "active":
-            if self.trigger_activate() != TransitionCallbackReturn.SUCCESS:
-                self.get_logger().error("Autostart: activate failed.")
-
     def release_on_exit(self):
         """Relock (if enabled) and log out of all robots when the process stops."""
         logged_in = [h for h, robot in self.robots.items() if robot.is_logged_in()]
@@ -324,7 +312,6 @@ def main(args=None):
     node = None
     try:
         node = FrankLockUnlockNode()
-        node.autostart()
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):
         if node is not None:
